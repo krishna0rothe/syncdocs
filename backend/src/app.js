@@ -5,9 +5,11 @@ const morgan = require("morgan");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const cors = require("cors");
 
 
 const app = express();
+app.use(cors());
 
 // Middleware
 app.use(morgan("dev")); // Logging middleware

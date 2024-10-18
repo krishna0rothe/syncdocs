@@ -4,7 +4,10 @@ const { generateToken } = require("../services/authService");
 
 // Register User
 exports.register = async (req, res) => {
-    const { name, username, email, password } = req.body;
+    const { fullName, username, email, password } = req.body;
+    const name = fullName;
+    console.log(req.body);
+    console.log("name=>",name);  
 
     try {
         // Check if user already exists
