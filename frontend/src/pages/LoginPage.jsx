@@ -2,69 +2,52 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosConfig";
 
-export default function RegistrationPage() {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [errors, setErrors] = useState({});
+export default function LoginPage() {
+  const [username, setUsername] = useState(""); // Renamed from formData to username
+  const [password, setPassword] = useState(""); // Added separate state for password
+  const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
 
-  // Function to handle input changes
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Dummy validation function (as we don’t have a real endpoint for checking username/email)
-  const validateField = (name, value) => {
-    if (name === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) {
-        setErrors({ ...errors, email: "Invalid email format" });
-      } else {
-        setErrors({ ...errors, email: "" });
-      }
-    }
-
+    const { name, value } = e.target;
     if (name === "username") {
-      if (value.length < 3) {
-        setErrors({
-          ...errors,
-          username: "Username must be at least 3 characters long",
-        });
-      } else {
-        setErrors({ ...errors, username: "" });
-      }
+      setUsername(value);
+    } else if (name === "password") {
+      setPassword(value);
     }
   };
 
-  // Function to handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setErrors({ ...errors, confirmPassword: "Passwords do not match" });
-      return;
-    }
+    setError("");
+    setSuccessMessage("");
+
     try {
-      const response = await axiosInstance.post("/auth/register", formData);
-      setSuccessMessage(
-        "Registration successful! Please check your email to verify your account."
-      );
-      navigate("/login"); 
+      const response = await axiosInstance.post("/auth/login", {
+        username,
+        password,
+      }); // Sending username and password directly
+      const token = response.data.token; // Assuming the JWT token is returned in the response
+
+      // Store the token in localStorage
+      localStorage.setItem("x-auth-token", token);
+
+      // Set the default Axios Authorization header
+      axiosInstance.defaults.headers.common["x-auth-token"] = token;
+
+      setSuccessMessage("Login successful! Redirecting...");
+      // Here you would typically handle the successful login,
+      // such as redirecting to a dashboard
+      // Example: window.location.href = "/dashboard";
+      navigate("/home")
     } catch (error) {
-      setErrors({
-        ...errors,
-        submit: "Registration failed. Please try again.",
-      });
+      setError("Invalid username/email or password. Please try again.");
     }
   };
 
   return (
-    <div className="registration-page">
+    <div className="login-page">
       <header>
         <div className="logo">
           <svg
@@ -98,102 +81,48 @@ export default function RegistrationPage() {
           </svg>
           <span>SyncDocs</span>
         </div>
-        <a href="/login" className="login-link">
-          Already have an account? Log in
+        <a href="/register" className="register-link">
+          Don't have an account? Sign up
         </a>
       </header>
       <main>
         <form onSubmit={handleSubmit}>
-          <h1>Create your SyncDocs account</h1>
-
+          <h1>Welcome back to SyncDocs</h1>
           <div className="form-group">
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">Username or Email</label>
             <input
               type="text"
               id="username"
-              name="username"
-              value={formData.username}
+              name="username" // Updated to match the new state
+              value={username} // Updated to use the new state variable
               onChange={handleChange}
-              onBlur={(e) => validateField("username", e.target.value)}
               required
             />
-            {errors.username && (
-              <span className="error">{errors.username}</span>
-            )}
           </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              onBlur={(e) => validateField("email", e.target.value)}
-              required
-            />
-            {errors.email && <span className="error">{errors.email}</span>}
-          </div>
-
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
               type="password"
               id="password"
-              name="password"
-              value={formData.password}
+              name="password" // Updated to match the new state
+              value={password} // Updated to use the new state variable
               onChange={handleChange}
               required
             />
           </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-            />
-            {errors.confirmPassword && (
-              <span className="error">{errors.confirmPassword}</span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={Object.values(errors).some((error) => error !== "")}
-          >
-            Sign Up
-          </button>
-
-          {errors.submit && <span className="error">{errors.submit}</span>}
+          <a href="/forgot-password" className="forgot-password">
+            Forgot Password?
+          </a>
+          <button type="submit">Login</button>
+          {error && <span className="error">{error}</span>}
           {successMessage && <span className="success">{successMessage}</span>}
-
-          <p className="terms">
-            By creating an account, you agree to our{" "}
-            <a href="/terms">Terms of Service</a> and{" "}
-            <a href="/privacy">Privacy Policy</a>.
+          <p className="signup-prompt">
+            Don't have an account? <a href="/register">Sign Up</a>
           </p>
         </form>
       </main>
       <style jsx>{`
-        .registration-page {
+        .login-page {
           font-family: Arial, sans-serif;
           background-color: #f4f7f6;
           min-height: 100vh;
@@ -220,7 +149,7 @@ export default function RegistrationPage() {
           margin-right: 0.5rem;
         }
 
-        .login-link {
+        .register-link {
           color: #5d737e;
           text-decoration: none;
           font-size: 0.9rem;
@@ -267,6 +196,19 @@ export default function RegistrationPage() {
           font-size: 1rem;
         }
 
+        .forgot-password {
+          display: block;
+          text-align: right;
+          color: #a7bfc2;
+          font-size: 0.9rem;
+          margin-bottom: 1rem;
+          text-decoration: none;
+        }
+
+        .forgot-password:hover {
+          text-decoration: underline;
+        }
+
         button {
           width: 100%;
           padding: 0.75rem;
@@ -284,11 +226,6 @@ export default function RegistrationPage() {
           background-color: #49707c;
         }
 
-        button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
         .error {
           color: #ff6b6b;
           font-size: 0.9rem;
@@ -303,23 +240,22 @@ export default function RegistrationPage() {
           display: block;
         }
 
-        .terms {
-          font-size: 0.8rem;
+        .signup-prompt {
+          font-size: 0.9rem;
           color: #333333;
           text-align: center;
           margin-top: 1rem;
         }
 
-        .terms a {
+        .signup-prompt a {
           color: #5d737e;
           text-decoration: none;
         }
 
-        .terms a:hover {
+        .signup-prompt a:hover {
           text-decoration: underline;
         }
       `}</style>
     </div>
   );
 }
-  
