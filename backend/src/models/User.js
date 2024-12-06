@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isverified: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Hash password before saving the user
