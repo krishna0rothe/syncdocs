@@ -62,7 +62,7 @@ export default function LandingPage() {
             Effortlessly create, manage, and collaborate on your project
             documentation.
           </p>
-          <a href="/register">
+          <a href="/signup">
             <button className="cta-button">Sign Up for Free</button>
           </a>
         </div>

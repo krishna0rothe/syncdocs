@@ -8,12 +8,18 @@ const nodemailer = require("nodemailer");
 const sendVerificationEmail = async (recipientEmail, verificationUrl) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587, // Use port 587 for STARTTLS
+      secure: false, // Use STARTTLS, not SSL
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASSWORD,
       },
+      tls: {
+        rejectUnauthorized: false, // Allows self-signed certificates
+      },
     });
+    console.log("GMAIL_USER=>", process.env.GMAIL_USER);
 
     const mailOptions = {
       from: process.env.GMAIL_USER,

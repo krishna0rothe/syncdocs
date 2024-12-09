@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 const cors = require("cors");
 
 
@@ -20,6 +21,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // URL encoded body parser
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/projects", projectRoutes);
 
 
 // Error handling middleware
