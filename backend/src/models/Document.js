@@ -1,41 +1,55 @@
-// models/Document.js
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema(
   {
-    title: {
+    name: {
       type: String,
+      required: true,
+      trim: true,
+    },
+    folder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Folder", // Folder the document belongs to
+      default: null, // If null, it is at the root level
+    },
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project", // Link to the parent project
       required: true,
     },
     content: {
-      type: String, // You can add rich text or markdown handling later for text formatting
-      required: true,
+      type: String, // Store the markdown content of the document
+      default: "",
     },
-    owner: {
+    lastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+      ref: "User", // Tracks who last updated the document
     },
-    collaborators: [
+    allowedRoles: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Collaborator",
-        default: [],
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        role: {
+          type: String,
+          enum: ["editor", "viewer"],
+          default: "viewer",
+        },
       },
     ],
-    isPublic: {
-      type: Boolean,
-      default: false, // By default, the document is private
+    createdAt: {
+      type: Date,
+      default: Date.now,
     },
-    folderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Document", // If it is part of a folder
-      default: null,
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const Document = mongoose.model("Document", documentSchema);
-
-module.exports = Document;
+module.exports = mongoose.model("Document", documentSchema);

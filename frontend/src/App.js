@@ -17,6 +17,7 @@ import RegistrationPage from "./pages/RegistrationPage";
 import LandingPage from "./pages/LandingPage";
 import LogoutPage from "./pages/LogoutPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
+import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
@@ -60,6 +61,7 @@ function App() {
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/team" element={<TeamPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/project/:id" element={<ProjectDetailsPage />} />
         </Routes>
       </AppLayout>
     </Router>
