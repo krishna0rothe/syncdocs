@@ -183,70 +183,59 @@ exports.getProjectDetails = async (req, res) => {
   try {
     const projectId = req.params.projectId;
 
-    // Ensure the user is authorized and has access to the project
-    const project = req.project; // This is set by a middleware checking ownership
+    // Validate that the project exists and belongs to the user
+    const project = await Project.findById(projectId).populate("owner", "_id");
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+    if (project.owner._id.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized access to this project." });
+    }
 
-    // Fetch the parent folders (top-level folders with no parent)
-    const parentFolders = await Folder.find({
+    // Fetch root-level folders and documents
+    const rootFolders = await Folder.find({
       project: projectId,
       parent: null,
-    })
-      .select("name _id") // Only fetch name and _id for simplicity
-      .exec();
-
-    // Fetch documents that are not in any folder (at project level)
+    }).exec();
     const rootDocuments = await Document.find({
       project: projectId,
       folder: null,
     })
-      .select("name _id") // Only fetch name and _id for simplicity
+      .select("name _id")
       .exec();
 
-    // Helper function to fetch subfolders and documents for a folder
-    const getFolderDetails = async (folderId) => {
-      // Fetch child folders of the given folder
-      const subfolders = await Folder.find({ parent: folderId })
+    // Helper function to build the hierarchical structure of folders and documents
+    const buildFolderHierarchy = async (folder) => {
+      const childFolders = await Folder.find({ parent: folder._id }).exec();
+      const documents = await Document.find({ folder: folder._id })
         .select("name _id")
         .exec();
 
-      // Fetch documents in this folder
-      const documents = await Document.find({ folder: folderId })
-        .select("name _id")
-        .exec();
-
-      // For each subfolder, get its details (subfolders and documents inside)
-      const formattedSubfolders = await Promise.all(
-        subfolders.map(async (subfolder) => {
-          const subfolderDetails = await getFolderDetails(subfolder._id);
-          return {
-            ...subfolder,
-            subFolders: subfolderDetails.subFolders,
-            documents: subfolderDetails.documents,
-          };
+      const children = await Promise.all(
+        childFolders.map(async (childFolder) => {
+          return await buildFolderHierarchy(childFolder); // Recursively fetch subfolders
         })
       );
 
       return {
-        subFolders: formattedSubfolders,
-        documents: documents,
+        _id: folder._id,
+        name: folder.name,
+        documents,
+        subFolders: children,
       };
     };
 
-    // For each parent folder, get its subfolders and documents
-    const foldersWithDetails = await Promise.all(
-      parentFolders.map(async (folder) => {
-        const folderDetails = await getFolderDetails(folder._id);
-        return {
-          _id: folder._id,
-          name: folder.name,
-          subFolders: folderDetails.subFolders,
-          documents: folderDetails.documents,
-        };
+    // Build the folder hierarchy
+    const foldersWithHierarchy = await Promise.all(
+      rootFolders.map(async (folder) => {
+        return await buildFolderHierarchy(folder);
       })
     );
 
-    // Final response structure
-    res.status(200).json({
+    // Construct the response
+    const response = {
       project: {
         id: project._id,
         name: project.name,
@@ -254,9 +243,13 @@ exports.getProjectDetails = async (req, res) => {
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       },
-      folders: foldersWithDetails, // Parent folders and their child subfolders with documents
-      documents: rootDocuments, // Documents that are not in any folder (project level)
-    });
+      structure: {
+        folders: foldersWithHierarchy, // Nested folders and documents
+        rootDocuments, // Documents not in any folder
+      },
+    };
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching project details:", error);
     res.status(500).json({ message: "Failed to fetch project details." });

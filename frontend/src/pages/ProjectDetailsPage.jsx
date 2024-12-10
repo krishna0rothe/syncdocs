@@ -5,16 +5,13 @@ import axiosInstance from "../config/axiosConfig";
 const ProjectDetailsPage = () => {
   const { id } = useParams();
   const [project, setProject] = useState(null);
-  const [folders, setFolders] = useState([]);
-  const [documents, setDocuments] = useState([]);
+  const [structure, setStructure] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [loading, setLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(false);
   const [formType, setFormType] = useState(""); // 'document' or 'folder'
   const [newItem, setNewItem] = useState({
     name: "",
-    content: "",
-    description: "",
     parentFolderId: null,
   });
 
@@ -23,8 +20,7 @@ const ProjectDetailsPage = () => {
       .get(`/projects/project/${id}`)
       .then((response) => {
         setProject(response.data.project);
-        setFolders(response.data.folders);
-        setDocuments(response.data.documents);
+        setStructure(response.data.structure);
         setLoading(false);
       })
       .catch(() => {
@@ -43,67 +39,83 @@ const ProjectDetailsPage = () => {
     console.log("Document clicked:", documentId);
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
   const handleAddItemClick = (type, parentId) => {
     setFormType(type);
-    setNewItem({ ...newItem, parentFolderId: parentId });
+    setNewItem({ name: "", parentFolderId: parentId });
     setShowPopup(true);
   };
 
   const handlePopupClose = () => {
     setShowPopup(false);
-    setNewItem({
-      name: "",
-      content: "",
-      description: "",
-      parentFolderId: null,
-    });
+    setNewItem({ name: "", parentFolderId: null });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewItem({ ...newItem, [name]: value });
+    setNewItem((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFormSubmit = () => {
-    if (formType === "document") {
-      const documentData = {
-        name: newItem.name,
-        content: newItem.content,
-        project: id,
-        folder: newItem.parentFolderId || "",
-      };
+    const apiEndpoint =
+      formType === "document"
+        ? "/projects/create-document"
+        : "/projects/create-folder";
+    const payload =
+      formType === "document"
+        ? {
+            name: newItem.name,
+            project: id,
+            folder: newItem.parentFolderId,
+          }
+        : {
+            name: newItem.name,
+            project: id,
+            parent: newItem.parentFolderId,
+          };
 
-      axiosInstance
-        .post("/projects/create-document", documentData)
-        .then((response) => {
-          setDocuments((prevDocs) => [...prevDocs, response.data]);
-          handlePopupClose();
-        })
-        .catch((error) => {
-          console.error("Error creating document:", error);
-        });
-    } else if (formType === "folder") {
-      const folderData = {
-        name: newItem.name,
-        project: id,
-        parent: newItem.parentFolderId || null,
-      };
-
-      axiosInstance
-        .post("/projects/create-folder", folderData)
-        .then((response) => {
-          setFolders((prevFolders) => [...prevFolders, response.data]);
-          handlePopupClose();
-        })
-        .catch((error) => {
-          console.error("Error creating folder:", error);
-        });
-    }
+    axiosInstance
+      .post(apiEndpoint, payload)
+      .then((response) => {
+        if (formType === "document") {
+          // Add new document to the relevant folder
+          const updatedStructure = { ...structure };
+          const addDocumentToFolder = (folders) => {
+            folders.forEach((folder) => {
+              if (folder._id === newItem.parentFolderId) {
+                folder.documents.push(response.data);
+              } else if (folder.subFolders.length > 0) {
+                addDocumentToFolder(folder.subFolders);
+              }
+            });
+          };
+          if (newItem.parentFolderId) {
+            addDocumentToFolder(updatedStructure.folders);
+          } else {
+            updatedStructure.rootDocuments.push(response.data);
+          }
+          setStructure(updatedStructure);
+        } else {
+          // Add new folder to the relevant parent folder
+          const updatedStructure = { ...structure };
+          const addFolderToParent = (folders) => {
+            folders.forEach((folder) => {
+              if (folder._id === newItem.parentFolderId) {
+                folder.subFolders.push(response.data);
+              } else if (folder.subFolders.length > 0) {
+                addFolderToParent(folder.subFolders);
+              }
+            });
+          };
+          if (newItem.parentFolderId) {
+            addFolderToParent(updatedStructure.folders);
+          } else {
+            updatedStructure.folders.push(response.data);
+          }
+          setStructure(updatedStructure);
+        }
+        handlePopupClose();
+      })
+      .catch((error) => console.error("Error creating item:", error));
   };
 
   const renderFolderTree = (folder) => {
@@ -114,7 +126,7 @@ const ProjectDetailsPage = () => {
         <div
           style={{
             ...styles.treeItem,
-            backgroundColor: isExpanded ? "#A8D5BA" : "#e1f0e0", // Odoo green shades
+            backgroundColor: isExpanded ? "#A8D5BA" : "#e1f0e0",
           }}
           onClick={() => handleFolderClick(folder._id)}
         >
@@ -142,54 +154,43 @@ const ProjectDetailsPage = () => {
         </div>
         {isExpanded && (
           <ul style={styles.subTreeList}>
-            {folder.documents?.length > 0 ? (
-              folder.documents.map((document) => (
-                <li key={document._id} style={styles.treeNode}>
-                  <div
-                    style={{
-                      ...styles.treeItem,
-                      backgroundColor: "#F1F8F3", // Light green for documents
-                    }}
-                    onClick={() => handleDocumentClick(document._id)}
-                  >
-                    📄 {document.name}
-                  </div>
-                </li>
-              ))
-            ) : (
-              <li style={styles.noContentMessage}>No documents available.</li>
-            )}
-            {folder.subFolders?.length > 0 &&
-              folder.subFolders.map((subFolder) => renderFolderTree(subFolder))}
+            {folder.documents.map((document) => (
+              <li key={document._id} style={styles.treeNode}>
+                <div
+                  style={{
+                    ...styles.treeItem,
+                    backgroundColor: "#F1F8F3",
+                  }}
+                  onClick={() => handleDocumentClick(document._id)}
+                >
+                  📄 {document.name}
+                </div>
+              </li>
+            ))}
+            {folder.subFolders.map((subFolder) => renderFolderTree(subFolder))}
           </ul>
         )}
       </li>
     );
   };
 
-  const renderRootDocuments = () => {
-    return documents
-      .filter((document) => !document.folder) // Filter root-level documents
-      .map((document) => (
-        <li key={document._id} style={styles.treeNode}>
-          <div
-            style={{
-              ...styles.treeItem,
-              backgroundColor: "#F1F8F3", // Light green for documents
-            }}
-            onClick={() => handleDocumentClick(document._id)}
-          >
-            📄 {document.name}
-          </div>
-        </li>
-      ));
-  };
+  const renderRootDocuments = () =>
+    structure?.rootDocuments.map((document) => (
+      <li key={document._id} style={styles.treeNode}>
+        <div
+          style={{
+            ...styles.treeItem,
+            backgroundColor: "#F1F8F3",
+          }}
+          onClick={() => handleDocumentClick(document._id)}
+        >
+          📄 {document.name}
+        </div>
+      </li>
+    ));
 
-  const renderRootFolders = () => {
-    return folders
-      .filter((folder) => !folder.parent) // Filter root-level folders
-      .map((folder) => renderFolderTree(folder));
-  };
+  const renderRootFolders = () =>
+    structure?.folders.map((folder) => renderFolderTree(folder));
 
   const styles = {
     pageContainer: {
@@ -209,52 +210,25 @@ const ProjectDetailsPage = () => {
       fontWeight: "bold",
       marginBottom: "10px",
     },
-    projectInfo: {
-      fontSize: "16px",
-      color: "#6C757D",
-    },
-    treeContainer: {
-      marginTop: "30px",
-    },
     treeList: {
       listStyle: "none",
       paddingLeft: "20px",
-    },
-    subTreeList: {
-      listStyle: "none",
-      paddingLeft: "20px",
-    },
-    treeNode: {
-      marginBottom: "10px",
     },
     treeItem: {
       padding: "10px 15px",
       borderRadius: "8px",
       boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
       cursor: "pointer",
-      transition: "box-shadow 0.3s",
       display: "flex",
       justifyContent: "space-between",
-      alignItems: "center",
-      fontSize: "16px",
     },
     addButton: {
       marginLeft: "10px",
-      backgroundColor: "#00B37E", // Odoo signature green
+      backgroundColor: "#00B37E",
       color: "#fff",
       border: "none",
       padding: "5px 10px",
       borderRadius: "5px",
-      cursor: "pointer",
-      fontSize: "14px",
-      display: "inline-block",
-      marginTop: "5px",
-      marginBottom: "5px",
-    },
-    noContentMessage: {
-      padding: "10px 15px",
-      color: "#6C757D",
-      fontStyle: "italic",
     },
     popupContainer: {
       position: "fixed",
@@ -271,50 +245,20 @@ const ProjectDetailsPage = () => {
       backgroundColor: "#fff",
       padding: "20px",
       borderRadius: "10px",
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-      maxWidth: "500px",
-      width: "100%",
-    },
-    inputField: {
-      width: "100%",
-      padding: "10px",
-      marginBottom: "15px",
-      borderRadius: "5px",
-      border: "1px solid #ccc",
-      fontSize: "16px",
-    },
-    popupButton: {
-      backgroundColor: "#00B37E",
-      color: "#fff",
-      border: "none",
-      padding: "10px 20px",
-      borderRadius: "5px",
-      cursor: "pointer",
-      fontSize: "16px",
-      width: "100%",
     },
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div style={styles.pageContainer}>
       <div style={styles.header}>
-        <div style={styles.projectName}>{project.name}</div>
-        <div style={styles.projectInfo}>
-          Created on: {formatDate(project.createdAt)}
-        </div>
+        <div style={styles.projectName}>{project?.name}</div>
       </div>
-      <div style={styles.treeContainer}>
-        <h2>Documents & Folders</h2>
-        <ul style={styles.treeList}>
-          {renderRootFolders()}
-          {renderRootDocuments()}
-        </ul>
-      </div>
-
+      <ul style={styles.treeList}>
+        {renderRootFolders()}
+        {renderRootDocuments()}
+      </ul>
       {showPopup && (
         <div style={styles.popupContainer}>
           <div style={styles.popupContent}>
@@ -327,23 +271,9 @@ const ProjectDetailsPage = () => {
               placeholder="Name"
               value={newItem.name}
               onChange={handleInputChange}
-              style={styles.inputField}
             />
-            {formType === "document" && (
-              <textarea
-                name="content"
-                placeholder="Content"
-                value={newItem.content}
-                onChange={handleInputChange}
-                style={styles.inputField}
-              />
-            )}
-            <button style={styles.popupButton} onClick={handleFormSubmit}>
-              Submit
-            </button>
-            <button style={styles.popupButton} onClick={handlePopupClose}>
-              Close
-            </button>
+            <button onClick={handleFormSubmit}>Submit</button>
+            <button onClick={handlePopupClose}>Cancel</button>
           </div>
         </div>
       )}
