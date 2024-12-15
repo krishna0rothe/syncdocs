@@ -2,8 +2,15 @@
 const express = require("express");
 const router = express.Router();
 const documentController = require("../controllers/documentController");
-const authenticateJWT = require("../middlewares/authMiddleware");   
+const documentManagementController = require("../controllers/docManagementController");
+const authenticateJWT = require("../middlewares/authMiddleware"); 
+const isOwner = require("../middlewares/isOwner"); 
+const accessControlMiddleware = require("../middlewares/accessControlMiddleware");
 
+router.get("/get-document/:id", authenticateJWT, documentController.getDocumentDetails);
+
+// Route to add/remove document access
+router.post("/:documentId/access", authenticateJWT, accessControlMiddleware, documentManagementController.updateDocumentAccess);
 
 
 module.exports = router;

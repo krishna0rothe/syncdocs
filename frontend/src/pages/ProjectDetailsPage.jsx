@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosConfig";
 
 const ProjectDetailsPage = () => {
@@ -14,6 +14,7 @@ const ProjectDetailsPage = () => {
     name: "",
     parentFolderId: null,
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     axiosInstance
@@ -36,7 +37,7 @@ const ProjectDetailsPage = () => {
   };
 
   const handleDocumentClick = (documentId) => {
-    console.log("Document clicked:", documentId);
+    navigate(`/get-document/${documentId}`);
   };
 
   const handleAddItemClick = (type, parentId) => {
@@ -77,7 +78,6 @@ const ProjectDetailsPage = () => {
       .post(apiEndpoint, payload)
       .then((response) => {
         if (formType === "document") {
-          // Add new document to the relevant folder
           const updatedStructure = { ...structure };
           const addDocumentToFolder = (folders) => {
             folders.forEach((folder) => {
@@ -95,7 +95,6 @@ const ProjectDetailsPage = () => {
           }
           setStructure(updatedStructure);
         } else {
-          // Add new folder to the relevant parent folder
           const updatedStructure = { ...structure };
           const addFolderToParent = (folders) => {
             folders.forEach((folder) => {
@@ -204,6 +203,9 @@ const ProjectDetailsPage = () => {
     },
     header: {
       marginBottom: "20px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     projectName: {
       fontSize: "28px",
@@ -229,6 +231,7 @@ const ProjectDetailsPage = () => {
       border: "none",
       padding: "5px 10px",
       borderRadius: "5px",
+      cursor: "pointer",
     },
     popupContainer: {
       position: "fixed",
@@ -245,6 +248,32 @@ const ProjectDetailsPage = () => {
       backgroundColor: "#fff",
       padding: "20px",
       borderRadius: "10px",
+      width: "400px",
+      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+    },
+    popupInput: {
+      width: "100%",
+      padding: "10px",
+      marginBottom: "10px",
+      border: "1px solid #ddd",
+      borderRadius: "5px",
+      fontSize: "16px",
+    },
+    popupButton: {
+      padding: "10px 15px",
+      margin: "0 5px",
+      borderRadius: "5px",
+      border: "none",
+      fontSize: "16px",
+      cursor: "pointer",
+    },
+    submitButton: {
+      backgroundColor: "#00B37E",
+      color: "#fff",
+    },
+    cancelButton: {
+      backgroundColor: "#f44336",
+      color: "#fff",
     },
   };
 
@@ -254,26 +283,57 @@ const ProjectDetailsPage = () => {
     <div style={styles.pageContainer}>
       <div style={styles.header}>
         <div style={styles.projectName}>{project?.name}</div>
+        <div>
+          <button
+            style={styles.addButton}
+            onClick={() => handleAddItemClick("document", null)}
+          >
+            Add Root Document
+          </button>
+          <button
+            style={styles.addButton}
+            onClick={() => handleAddItemClick("folder", null)}
+          >
+            Add Root Folder
+          </button>
+        </div>
       </div>
       <ul style={styles.treeList}>
-        {renderRootFolders()}
         {renderRootDocuments()}
+        {renderRootFolders()}
       </ul>
       {showPopup && (
         <div style={styles.popupContainer}>
           <div style={styles.popupContent}>
-            <h3>
-              {formType === "document" ? "Create Document" : "Create Folder"}
-            </h3>
+            <h3>{formType === "document" ? "Add Document" : "Add Folder"}</h3>
             <input
               type="text"
               name="name"
               placeholder="Name"
               value={newItem.name}
               onChange={handleInputChange}
+              style={styles.popupInput}
             />
-            <button onClick={handleFormSubmit}>Submit</button>
-            <button onClick={handlePopupClose}>Cancel</button>
+            <div>
+              <button
+                style={{
+                  ...styles.popupButton,
+                  ...styles.submitButton,
+                }}
+                onClick={handleFormSubmit}
+              >
+                Create
+              </button>
+              <button
+                style={{
+                  ...styles.popupButton,
+                  ...styles.cancelButton,
+                }}
+                onClick={handlePopupClose}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
