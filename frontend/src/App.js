@@ -18,12 +18,19 @@ import LandingPage from "./pages/LandingPage";
 import LogoutPage from "./pages/LogoutPage";
 import CreateProjectPage from "./pages/CreateProjectPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
+import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
 
   // Define routes that require the full-screen layout
-  const fullScreenRoutes = ["/login", "/signup", "/", "/logout", "/create-project"];
+  const fullScreenRoutes = [
+    "/login",
+    "/signup",
+    "/",
+    "/logout",
+    "/create-project",
+  ];
 
   // Check if the current route is in the full-screen list
   const isFullScreen = fullScreenRoutes.includes(location.pathname);
@@ -62,6 +69,7 @@ function App() {
           <Route path="/team" element={<TeamPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/project/:id" element={<ProjectDetailsPage />} />
+          <Route path="/document/:id" element={<DocumentDetailsPage />} />
         </Routes>
       </AppLayout>
     </Router>

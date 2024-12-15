@@ -51,3 +51,59 @@ exports.getDocumentDetails = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch document details." });
   }
 };
+
+// Updating the document content 
+exports.updateDocumentContent = async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { content } = req.body;
+
+    // Check if content is provided
+    if (!content) {
+      return res.status(400).json({ message: "Content is required." });
+    }
+
+    // Fetch the document
+    const document = await Document.findById(documentId);
+    if (!document) {
+      return res.status(404).json({ message: "Document not found." });
+    }
+
+    // Check if the user has edit access
+    const userRole = req.user.role; // Assuming the user role is added in the request by a middleware
+
+    // Check if the user is an editor or the project owner
+    if (
+      userRole !== "editor" &&
+      req.user.id !== document.lastUpdatedBy.toString()
+    ) {
+      return res.status(403).json({
+        message: "You don't have permission to edit this document.",
+      });
+    }
+
+    // Update the document content
+    document.content = content;
+    document.lastUpdatedBy = req.user.id;
+    document.updatedAt = Date.now(); // Update the timestamp
+
+    // Save the updated document
+    await document.save();
+
+    res.status(200).json({
+      message: "Document content updated successfully.",
+      document: {
+        name: document.name,
+        content: document.content,
+        updatedAt: document.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating document content:", error);
+    res.status(500).json({ message: "Failed to update document content." });
+  }
+};
+
+
+
+

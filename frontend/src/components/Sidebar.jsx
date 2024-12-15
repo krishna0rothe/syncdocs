@@ -97,11 +97,6 @@ const Sidebar = () => {
             <NavLink
               to={item.path}
               style={{ color: "inherit", textDecoration: "none" }} // Maintain text color and remove underline
-              activeStyle={{
-                backgroundColor: "#875A7B", // Apply the active styles to NavLink
-                color: "#FFFFFF",
-                fontWeight: "bold",
-              }}
               onClick={() => setActiveItem(item.name)}
             >
               {item.name}

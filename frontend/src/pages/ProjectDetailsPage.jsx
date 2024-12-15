@@ -37,7 +37,7 @@ const ProjectDetailsPage = () => {
   };
 
   const handleDocumentClick = (documentId) => {
-    navigate(`/get-document/${documentId}`);
+    navigate(`/document/${documentId}`);
   };
 
   const handleAddItemClick = (type, parentId) => {
